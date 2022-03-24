@@ -25,7 +25,7 @@ competition](https://www.kaggle.com/uciml/caravan-insurance-challenge).
         the competition
     -   Eval\_Curve() - generate RoC and PS curves given predicted
         outcomes and actual labels
-    -   Eval\_Curve\_Prel() - helper function to Eval\_Curve
+    -   Eval\_Curve\_Prel() - helper function to Eval\_Curve()
     -   varImp() - adaption to caret::varIMP()
     -   get.package() - check which of the given packages are installed,
         call all packages which are, install the remaining packages

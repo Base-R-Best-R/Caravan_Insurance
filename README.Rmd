@@ -30,7 +30,7 @@ This repository contains a course project including code as well as a paper on t
 * [Auxiliary Functions](https://github.com/Base-R-Best-R/Caravan_Insurance/blob/main/Auxilliary.R)
     + COIL_per() - calculate predictive performance as measured in the competition
     + Eval_Curve() - generate RoC and PS curves given predicted outcomes and actual labels
-    + Eval_Curve_Prel() - helper function to Eval_Curve 
+    + Eval_Curve_Prel() - helper function to Eval_Curve()
     + varImp() - adaption to caret::varIMP()
     + get.package() - check which of the given packages are installed, call all packages which are, install the remaining packages
     
