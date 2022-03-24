@@ -1,0 +1,215 @@
+---
+title: | 
+        | Predicting Caravan Insurance: A Bumpy Ride
+author: "Fabian Blasch, Gregor Steiner, Sophie Steininger, Jakob Zellmann"
+date: "`r format(Sys.Date(), format = '%m/%d/%Y')`"
+output: beamer_presentation
+header-includes:
+   - \usepackage{caption}
+   - \captionsetup[figure]{font=tiny}
+   - \usepackage{amsmath}
+fig_caption: true
+fig_width: 1.5 
+fig_height: 1
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+options(tinytex.verbose = TRUE)
+```
+
+```{r, echo = F, results = "hide", message = FALSE, warning = FALSE}
+# Aux
+source("Auxilliary.R")
+source("DEV_source.R")
+
+# load or install packages -!!! "ROSE" excluded - error while loading package
+get.package(c("glmnet", "Matrix", "ROCR", "caret", "glmnetUtils", "randomForest",
+              "mlbench", "ranger", "xgboost", "corrplot", "RColorBrewer"))
+```
+
+
+# Data
+
+```{r, echo = F, include=F}
+# load
+dat_carav <- as.data.frame(lapply(read.csv("caravan-insurance-challenge.csv"), as.character),                                                 stringsAsFactors = T)
+# split 
+dat_carav <- split(dat_carav, dat_carav$ORIGIN) |> setNames(c("test", "train"))
+
+
+sapply(dat_carav[["train"]], class)
+
+# remove cvonst col from df
+
+lapply(dat_carav, function(x){
+  x[, "ORIGIN"] <- NULL
+  x
+}) -> dat_carav
+
+sum(apply(dat_carav[["train"]], 2, function(x) any(is.na(x))))
+```
+
+* Caravan Insurance Data Set based on real world business data 
+*	Supplied by the Dutch datamining company Sentient Machine Research
+*	86 variables containing data on
+  *	demographic statistics
+  *	product usage 
+*	Unbalanced Data
+  *	classification data set with skewed class proportions
+
+# Elastic Net GLMs
+
+* Combination of LASSO and Ridge penalty:
+$$
+C(\alpha; \beta) = \alpha ||\beta||_1 + \frac{1-\alpha}{2} ||\beta||_2^2.
+$$
+
+* GLM from the binomial family with different link functions
+
+* The minimization problem is
+$$
+\min_{\beta \in \mathbb{R}^k} -\frac{1}{n}  l(y, X; \beta) + \lambda C(\alpha; \beta) \,
+$$
+where $l(y, X; \beta)$ is the log-likelihood.
+
+# GLMs: Link Functions
+
+* We try 4 different link functions: Normal cdf (Probit), Logistic cdf (Logit), Cauchy cdf, and complementary log-log
+
+```{r fig.height=6}
+cloglog <- function(x) 1 - exp(-exp(x))
+link_funcs <- c(pnorm, plogis, pcauchy, cloglog)
+
+x <- seq(-4, 4, 0.01)
+y <- sapply(link_funcs, function(f) f(x))
+
+# colors
+col <-  c("red1", rgb(51, 51, 178, maxColorValue = 255),"forestgreen","turquoise4")
+
+par(mar = c(4, 4, 2, 2))
+matplot(x, y, type = "l", col = col, lty = 1, lwd = 2,
+        xlab = "Linear Predictor", ylab = "Probability")
+legend("topleft", Links, fill = col)
+```
+
+
+# GLMs: Performance
+
+```{r eval = T, include = T}
+
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 2))
+# RoC Plot 
+Eval_Curve(plot_ROC_net, col = col, leg_text = Links)
+Eval_Curve(plot_ROC_net, as.numeric(dat_carav[["test"]][, "CARAVAN"]) - 1,
+           col = col, leg_text = Links, RoC = FALSE)
+
+```
+
+
+
+# XGBoost
+
+
+* the learning rate, $\eta \in [0.01, 0.6]$ (default: 0.3),
+
+* the regularization parameters, $(\gamma, \lambda) \in [0,1] \times [0.01,2]$ (default: 0 and 1 respectively),
+
+* the maximal depth of the trees, $max\_depth \in \{2,...,10\}$ (default: 6),
+
+* the maximal number of single trees contained in one model, $nrounds \in [1,1000]$,
+
+```{r eval = T, include = T}
+#load predictions
+predXBG <- readRDS(file = 'DEV_files/predXGB.RDS')
+
+real4ecp <- predXBG$real
+pred4ecp <- list(predXBG$pred)
+
+# plots
+ecp <- Eval_Curve_prel(act_label = pred4ecp, pred_val = real4ecp)
+```
+
+# XGBoost Performance
+```{r}
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 2))
+Eval_Curve(E_Curve_Prel = ecp, col = 'navyblue', leg_text = 'XGB')
+Eval_Curve(E_Curve_Prel = ecp, act_label =  as.numeric(dat_carav[["test"]][, "CARAVAN"]) - 1, 
+           col = 'navyblue', leg_text = 'XGB', RoC = F)
+```
+
+# Random Forest 
+
+	
+* mtry: number of variables to possibly split at in each node (85)
+* min.node.size: minimal node size (8)
+* splitrule: gini
+
+# Performance Comparison
+```{r}
+# reset 
+col <-  c("red1", rgb(51, 51, 178, maxColorValue = 255),"forestgreen","turquoise4", "#BB650B")
+
+# Plot 
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 2))
+Eval_Curve(E_Curve_Prel = c(prelim[4:5], ecp), col = col[3:5], leg_text = c("Cloglog", "Forest", "XGboost"))
+Eval_Curve(E_Curve_Prel = c(prelim[4:5], ecp), act_label =  as.numeric(dat_carav[["test"]][, "CARAVAN"]) - 1, 
+           col = col[3:5], leg_text = c("Cloglog", "Forest", "XGboost"), RoC = F)
+```
+
+# Sampling
+
+* Under sampling: sampling from the majority class without replacement and leaving the minority class in tact
+
+* Over sampling: sampling from the minority class with replacement and leaving the majority class in tact
+
+* Both: sampling from the minority class with replacement and from the majority class 
+ without replacement
+
+
+# Forest Sampling Performance
+```{r}
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 2))
+Eval_Curve(orig_ovun[c(1:3, 5)], col = col[c(1:3, 5)], leg_text = c("over", "under", "both", "orig"))
+Eval_Curve(orig_ovun[c(1:3, 5)], col = col[c(1:3, 5)], leg_text = c("over", "under", "both", "orig"),
+           RoC = FALSE, act_label = as.numeric(dat_carav[["test"]][, "CARAVAN"]) - 1)
+```
+
+# Current Challenge Performance
+```{r}
+nome <- c("logit", "probit",  "cauchit", "cloglog", "forest", "over", "under", 
+          "both", "XGB", "1st Place")
+
+win_per <- cbind(nome, c(unname(COIL_res), 121))
+
+knitr::kable(win_per, col.names = c("Model", "CoIL Performance"))
+```
+
+
+# Outlook
+
+* Cost function that penalizes false negatives
+
+* Feature engineering
+
+# Citation
+
+* P. van der Putten and M. van Someren (eds) . CoIL Challenge 2000: The Insurance Company Case. Published by Sentient Machine Research, Amsterdam. Also a Leiden Institute of Advanced Computer Science Technical Report 2000-09. June 22, 2000.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

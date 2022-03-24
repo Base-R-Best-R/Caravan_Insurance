@@ -1,0 +1,3 @@
+- Fit and compare sequential trees
+- Remove highly correlated feartures and fit models again (excluding glm-net?).
+- Attempt PCA 

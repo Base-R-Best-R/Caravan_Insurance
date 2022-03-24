@@ -1,0 +1,147 @@
+---
+title: "Predicting caravan insurances"
+output: 
+  github_document:
+    pandoc_args: --webtex
+    number_sections: true
+editor_options: 
+  chunk_output_type: inline
+bibliography: ./01_input_data/bib/literature.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#require packages
+pacman::p_load(xgboost, caret)
+
+#load data
+data <- read.csv('01_input_data/caravan-insurance-challenge.csv')
+
+
+#split in test and train data (as proposed in the description (https://www.kaggle.com/uciml/caravan-insurance-challenge) to simulate the challange)
+data.test <- subset(data, ORIGIN=='test')
+data.train <- subset(data, ORIGIN=='train')
+
+```
+
+
+# Estimation
+
+## XGB-Model
+```{r} 
+# TUNING
+# HEAVILY inspired by: https://stackoverflow.com/questions/35050846/xgboost-in-r-how-does-xgb-cv-pass-the-optimal-parameters-into-xgb-train
+
+#independent variable
+y <- 
+
+#dependent variables
+X <- subset()
+
+
+#intialize (unplausibly) high starting performance
+bestPer <- 10^6 
+
+#initialize number of iterations
+interations <- 100
+
+#CV to set HP - we interate over the parameter grid
+for(i in iterations){
+
+  #the parameters for the CV are set here
+  param <- list(objective = 'binary:logistic', #binary prediction problem
+                booster = 'gbtree', #trees are the simple learners
+                eval_metric = "logloss", #see: https://xgboost.readthedocs.io/en/stable/parameter.html
+                eta = runif(1, .01, .6), #default: .3
+                gamma = runif(1)), #default: 0
+                lambda = runif(1, .01, 2), #default: 1
+                max_depth = sample(2:10, 1)) #default: 6
+
+  
+  #max number of interations within each XGB-Model (B in the slides)
+  cv.nround <-  100
+  
+  #5-fold cross-validation
+  cv.nfold <-  5 
+  
+  #set seed for the CV
+  seed.number  <-  sample.int(10000, 1)
+  set.seed(seed.number)
+  
+  
+  #CV step
+  mdcv <- xgb.cv(data = as.matrix(X), label = as.matrix(y), params = param,
+                 nfold = cv.nfold, nrounds = cv.nround,
+                 verbose = F, early_stopping_rounds = 8, maximize = FALSE)
+  
+  
+  #index of best interation
+  best.iteration  <-  mdcv$best_iteration
+  
+  #rmse of best interation
+  performanceInspamle <-  
+  
+  
+    if(performanceInspamle < bestPer){
+    
+      #update bestPer
+      bestPer <- performanceInspamle
+    
+      #save hyperparameters
+      bestpara <- param
+      
+      #save nrounds as hyperparameter
+      bnrounds <- min_rmse_index 
+    }
+  
+  # print counter (nice if you run it in R but sub optimal for knitting)
+  # print(paste(str(nrow(grd)-i), 'interations remained')) 
+
+}
+```
+
+```{r echo=TRUE}
+
+#set parameters to best HPs
+bparam <- list(objective = 'reg:squarederror',
+               booster = 'gbtree',
+               eval_metric = "rmse",
+               eta = bestpara$eta,
+               gamma= bestpara$gamma)
+
+#train the model with the parameters set above
+txgb <- xgboost(data = as.matrix(X), label = as.matrix(y), params = bparam, nrounds = bnrounds)
+
+#no NAs in test data
+# sum(is.na(quindio_grid))
+
+#dependent variable raster_pop_100 in LEVELS as stated in the assignment
+depTest <- as.matrix(na.omit(quindio_grid))[,3]
+
+#rgressors for Test data
+regressorsTest <- as.matrix(na.omit(quindio_grid[,-c(1,2,3)]))
+
+#predict
+bPred_log <- predict(txgb, newdata = regressorsTest)
+
+#transform to level
+bPred <- exp(bPred_log)
+
+
+bPred <- cbind(quindio_grid[, 1:4], bPred)
+
+# convert to data.table
+bPred <- data.table(bPred)
+
+# and make sure they match
+bPred[, Pred_XGB := bPred * sum(raster_pop_100) / sum(bPred), by = raster_geocode_100]
+
+# #calculate rmse
+# brmse <- rmse(bPred$raster_pop_100, bPred$Pred_XGB)
+# 
+# #print rmse
+# brmse
+```

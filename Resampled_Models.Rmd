@@ -1,0 +1,199 @@
+---
+title: "Resampling"
+author: "Fabian Blasch"
+date: "`r format(Sys.Date(), format = '%m/%d/%Y')`"
+output: pdf_document
+---
+
+## Read 
+
+```{r}
+## Ran once ##
+
+    # # load
+    # dat_carav <- as.data.frame(lapply(read.csv("caravan-insurance-challenge.csv"), as.character),                                                 stringsAsFactors = T)
+    # # split 
+    # dat_carav <- split(dat_carav, dat_carav$ORIGIN) |> setNames(c("test", "train"))
+```
+
+## Sampling Datasets
+
+```{r}
+
+## Ran once ##
+
+    # # abs amount of pos and neg
+    # n <- sum(as.numeric(dat_carav[["train"]][, "CARAVAN"] == 1)) 
+    # N <- nrow(dat_carav[["train"]]) - n
+    # 
+    # # vec
+    # meth <- c("over", "under", "both")
+    # dat_carav_ts <- list()
+    # 
+    # # over, under and both
+    #
+    # for(i in 1:3){
+    #   
+    #   # sample
+    #   dat_carav_ts[[i]] <- ROSE::ovun.sample(CARAVAN ~ ., data = dat_carav[["train"]], 
+    #                                          method = meth[i], seed = 33)$data
+    #   
+    # }  
+
+    # # write 
+    # Map(function(x, y){
+    #   
+    #   # save
+    #   saveRDS(y, x)
+    #   
+    #   }, paste0("Parameters/Resampling/Sampled_Data/", c("Dover.RDS", "Dunder.RDS", "Dboth.RDS")),             dat_carav_ts)
+
+## READ ##
+
+lapply(list.files("Parameters/Resampling/Sampled_Data", pattern = ".RDS"), function(x){
+     
+       # read 
+       readRDS(paste0("Parameters/Resampling/Sampled_Data/", x))
+         
+       }) -> dat_carav_ts
+
+# remove constant column
+lapply(dat_carav_ts, function(x){
+  x[, "ORIGIN"] <- NULL
+  x
+}) -> dat_carav_ts
+```
+
+## Glmnets Resampled
+
+```{r}
+
+## Ran once ##
+
+    # # links
+    # links <- c("logit", "probit", "cauchit", "cloglog")
+    # 
+    # # over different Datasets
+    # Map(function(D, n){
+    # 
+    #   # CV
+    #   sapply(links, function(l){
+    #  
+    #     # cross validation
+    #     cvfit <- glmnetUtils::cva.glmnet(CARAVAN ~., data = D,
+    #                                      family = binomial(link = l),
+    #                                      type.measure = "deviance", nfolds = 10)
+    #   
+    #     # obtain min comb lambda and alpha
+    #     do.call(rbind, Map(function(x, y){
+    #   
+    #       cbind("Per" = x$cvm,
+    #             "Lambda" = x$lambda,
+    #             "Alpha" = rep(y, length(x$lambda)))
+    #   
+    #     }, cvfit$modlist, cvfit$alpha))-> per_matrix
+    #   
+    #     # obtain minimal combination
+    #     per_matrix[which.min(per_matrix[, "Per"]), ]
+    #   
+    #   }) -> opt.para
+    #   
+    #   # write 
+    #   saveRDS(opt.para, paste0("Parameters/Resampling/Glmnets/", n))
+    #   
+    # }, dat_carav_ts, c("both.RDS", "over.RDS", "under.RDS"))
+```
+
+## XGB 
+
+```{r}
+    
+## Ran once ##
+
+    # # over different Datasets
+    # Map(function(D, n){
+    # 
+    #   #independent variable
+    #   y <- as.numeric(D$CARAVAN) - 1
+    #   
+    #   #dependent variables
+    #   X <- Matrix::sparse.model.matrix(CARAVAN ~ ., data = D)
+    #   
+    #   #imbalanced data
+    #   spw <- sum(y==0) / sum(y)
+    #   
+    #   #intialize (unplausibly) high starting performance
+    #   bestPer <- 10^6 
+    #   
+    #   #initialize number of iterations
+    #   interations <- 500
+    #   
+    #   #CV to set HP - we interate over the parameter grid
+    #   for(i in 1:interations){
+    #   
+    #     #the parameters for the CV are set here
+    #     param <- list(objective = 'binary:logistic', #binary prediction problem
+    #                   
+    #                   booster = 'gbtree', #trees are the simple learners
+    #                   
+    #                   eval_metric = 'error', # proposed by xbg (alter.: error:=1-accuracy)
+    #                   
+    #                   eta = runif(1, .01, .6), #default: .3
+    #                   
+    #                   gamma = runif(1), #default: 0
+    #     
+    #                   lambda = runif(1, .01, 2), #default: 1
+    #                   
+    #                   max_depth = sample(2:10, 1)) #default: 6
+    #                   
+    #                   #scale_pos_weight = spw)
+    #   
+    #     
+    #     #max number of interations within each XGB-Model (B in the slides)
+    #     cv.nround <-  1000
+    #     
+    #     #4-fold cross-validation
+    #     cv.nfold <-  4
+    #     
+    #     #set seed for the CV
+    #     seed.number  <-  sample.int(10000, 1)
+    #     set.seed(seed.number)
+    #     
+    #     
+    #     #CV step
+    #     mdcv <- xgb.cv(data = as.matrix(X), label = as.matrix(y), params = param,
+    #                    nfold = cv.nfold, nrounds = cv.nround,
+    #                    verbose = F, early_stopping_rounds = 8, maximize = FALSE)
+    #     
+    #     
+    #     #index of best interation
+    #     best.iteration  <-  mdcv$best_iteration
+    #     
+    #     #rmse of best interation
+    #     performanceInspamle <- mdcv$evaluation_log$test_error_mean[best.iteration]
+    #     
+    #     
+    #       if(performanceInspamle < bestPer){
+    #       
+    #         #update bestPer
+    #         bestPer <- performanceInspamle
+    #       
+    #         #save hyperparameters
+    #         bestpara <- param
+    #         
+    #         #save nrounds as hyperparameter
+    #         bnrounds <- best.iteration 
+    #       }
+    #     
+    #     # print counter (nice if you run it in R but sub optimal for knitting)
+    #     # print(paste(str(interations-i), 'interations remained', sep=' '))
+    #   
+    #   }
+    #   
+    #   # save
+    #   saveRDS(list(bestpara, bnrounds) , file =  paste0("Parameters/Resampling/XGB/", n))
+    #   
+    # }, dat_carav_ts, c("both.RDS", "over.RDS", "under.RDS"))
+```
+
+
