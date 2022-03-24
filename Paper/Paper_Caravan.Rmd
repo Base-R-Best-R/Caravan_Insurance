@@ -2,7 +2,7 @@
 title: |
        | Predicting Caravan Insurance: A Bumpy Ride
 author: "Fabian Blasch, Gregor Steiner, Sophie Steininger, Jakob Zellmann"
-date: "`r format(Sys.Date(), format = '%m/%d/%Y')`"
+date: "02/26/2022"
 header-includes:
    - \usepackage{amsmath}
    - \usepackage{amssymb}
@@ -46,35 +46,29 @@ get.package(c("glmnet", "Matrix", "ROCR", "caret", "glmnetUtils", "randomForest"
 
 # Introduction
 
-From the perspective of a marketing analyst, it would be great to know which customers are interested the most in obtaining an additional product to specifically focus marketing activities on these customers. This premise is the focus of our analysis on Caravan Insurance Prediction. The dataset used was obtained from Kaggle, a website for data scientist which hosts various data science competitions and also published datasets for educational purposes. The Kaggle Competition in focus here is the CoiL Challenge on Caravan Insurance Prediction. It focuses on predicting whether already existing customer of an insurance firm would be likely to obtain a caravan insurance policy. This prediction would be used to determine which customers would receive marketing mail for caravan insurance. Therefore, the main question to be answered during the competition by the provided data is: “Can you predict who would be interested in buying a caravan insurance policy and give an explanation why?” This question consists of two parts, the predicting problem and identifying the features with the largest explaining power. 
+From the perspective of a marketing analyst, it would be great to know which customers are interested the most in obtaining an additional product to specifically focus marketing activities on these customers. This premise is the focus of our analysis on Caravan Insurance Prediction. The dataset used was obtained from Kaggle, a website for data scientist which hosts various data science competitions and also published datasets for educational purposes. The Kaggle Competition in focus here is the CoiL Challenge on Caravan Insurance Prediction. It focuses on predicting whether already existing customer of an insurance firm would be likely to obtain a caravan insurance policy. This prediction would be used to determine which customers would receive marketing mails for caravan insurance. Therefore, the main question to be answered during the competition is: “Can you predict who would be interested in buying a caravan insurance policy and give an explanation why?” This question consists of two parts, the predicting problem and identifying the features with the largest explanatory power. 
 
-For the evaluation of the winner great emphasis was put on having as little false negatives as possible in the predictions. This focus was due to the characteristic of the problem as not sending a mail to a customer, who would purchase an insurance policy, is much costlier than sending out a mail to customer that is not interested in purchasing insurance. There are also no other negative effects associated with sending the mail than the cost itself. Another reason for this focus in evaluating the winner was that the data set is highly unbalanced, as only a small number of customers is interested in caravan insurance. This would lead to a correct prediction of around 94%, if you simply assume no one is interested in this kind of insurance. [@CompWinner] As this approach does not lead to any interesting insights from a marketing perspective, the primary focus was on minimizing false negatives in the predictions. Accordingly, for performance evaluation, competitors were asked to send in 800 observations carrying the highest probability of purchasing caravan insurance when contacted. The true positives of those 800 observations were then interpreted as the score of the competition.
+For the evaluation of the winner great emphasis was put on having as little false negatives as possible in the predictions. This focus was due to the characteristic of the problem as not contacting a customer, who would purchase an insurance policy, is much costlier than sending out a mail to customer that is not interested in purchasing insurance. There are also no other negative effects associated with sending the mail than the cost itself. Another reason for this focus in evaluating the winner was that the data set is highly unbalanced, as only a small number of customers is interested in caravan insurance. This would lead to an accuracy of around 94%, if you simply predict all cases into the negative class. [@CompWinner] As this approach does not lead to any interesting insights from a marketing perspective, the primary focus was on minimizing false negatives in the predictions. Accordingly, for performance evaluation, competitors were asked to send in 800 observations carrying the highest probability of purchasing caravan insurance when contacted. The true positives of those 800 observations were then interpreted as the score of the competition.
 
-During the competition the data set was originally split up into two parts. During the competition only the training set was released to the public and the evaluation set was used to determine the winners. Now, after the competition is finished, both sets are combined in the publicly available Dataset on Kaggle, which allows us to compare our predictions to the competition. 
+During the competition the data set was originally split up into two parts. During the competition only the training set was released to the public and the evaluation set was used to determine the winners. Now, after the competition, both sets are combined in the publicly available dataset on Kaggle, which allows us to evaluate and compare our performance. 
 
-The rest of the paper is structured as follows: Firstly, the dataset used is described in detail, then the methodological approach is explained and then the corresponding models are presented. Finally, we are going to conclude with our best predictions. 
+The paper is structured as follows: Firstly, the dataset is described in detail, then the methodological approach is explained and following that the corresponding models are presented. Finally, we are going to conclude with our best predictions. 
 
 
-# Data description 
+# Data
 
-The data used in this Kaggle Competition is owned by the Dutch datamining company Sentient Machine Research and is based on real world business data. The dataset includes 86 variables on product usage and socio-demographic features. Each variable represents the value within a postal code area. The training data set includes over 5000 descriptions of customers while the evaluation data set contains around 4000 values.
+The data used in this Kaggle Competition originates from the Dutch datamining company Sentient Machine Research and is based on real world business data. The dataset includes 86 variables on product usage and socio-demographic features. Each variable represents the value within a postal code area. The training data set includes over 5000 observations while the evaluation data set contains around 4000.
 
-The socio-demographic variables allow for differentiation between the differences in the postal code areas. These variables include variables such as average age or number of houses. Additionally, there are numerous features on socio-demographic variables that represent a percentage within each group such as percentage of religions and marital status. An important note here is that the socio-demographic variables are taken from the average in the postal code areas. Therefore, the customers are matched to the area they live in, and the values assigned are the averages from that region. The advantage of this approach is that the socio-demographic variables can easily be matched to the existing customer database but does not contain as much information as individual data would have. 
+The socio-demographic variables allow for differentiation between the differences in the postal code areas. These variables include variables such as average age or number of houses. Additionally, there are numerous features on socio-demographic variables that represent a percentage within each group such as percentage of religions and marital status. An important note here is that the socio-demographic variables are taken from the average in the postal code areas. Therefore, the customers are matched to the area they live in, and the values assigned are the averages from that region. The advantage of this approach is that the socio-demographic variables can easily be matched to the existing customer database but does not contain as accurate information as data on an individual level. 
 
-The product usage features contain two types of information, firstly absolute contribution to policies and secondly number of policies held. From a theoretical perspective, these two kinds of features are collinear as customers with a higher number of policies in a specific insurance field are also having a higher absolute contribution. However, they cannot be combined as the information on the premium paid per policy can only be identified when both features are included in the models. 
-
-Additionally, the data was already discretionized, meaning that all numerical values were transformed into discrete variables. There were four groups introduced: customer subtypes, average age key, customer main type and keys for percentages.This grouping into levels is usually performed to allow for easier interpretation and increasing the correlation of the feature with the dependent variable, as the number of freedoms is infinite in continuous data. Additionally, many prediction models do not perform well with continuous data, for example random forests. [@Discretization]
-
-Another characteristic of our data set is the unbalanced dependent variable. Of the 5822 customers in the training data only 348 owned a caravan insurance, which is only 6%. Therefore, there is too little positive data for some predictive methods, especially learning algorithms. We attempt to overcome this problem by over- and under-sampling in a later section. 
-
-Overall, the Data is noisy, skewed, collinear and high dimensional with a weak relationship between independent and dependent variables. Additionally, one could expect that the socio-demographic data used is not going to be as informative as the behavioral data on insurance policies. The socio-demographic features used are derived from the postal area and do not contain information on an individual level, while the data on insurance policy contains information on individual behavior. Therefore, in comparison it would be reasonable to expect that the product usage features outperform the socio-demographic ones. [@CompWinner] 
-
+The product usage features contain two types of information, firstly absolute contribution to policies and secondly number of policies held. From a theoretical perspective, these two kinds of features are most likely highly correlated as customers with a higher number of policies in a specific insurance field are also contributing a greater total amount to their policies. 
+Another characteristic of our data set is the unbalanced dependent variable. Of the 5822 customers in the training data only 348 owned a caravan insurance, which is only 6%. 
 
 # Models
 
 ## Elastic Net GLMs
 
-The first type of model we use is a generalized linear model (GLM) with Elastic Net penalization. Since this model class was not explicitly covered in the lecture, we will give a brief introduction here.
+The first type of model we use is a generalized linear model (GLM) with Elastic Net penalization. Since this model class was not explicitly covered in class, we will give a brief introduction.
 
 The task is binary classification, therefore our dependent variable $y_i \in \{0, 1\}$ for all individuals $i = 1, \ldots, n$. Furthermore, 
 $$y_i \sim Bin(1, p),$$
@@ -112,15 +106,15 @@ $$
 
 where $l(y, X; \beta)$ is the log-likelihood. For more details see @GlmNet.
 
-## Tree based models
+## Tree Based Models
 
-Furthermore, we will try different tree based models, in particular Random Forests and Extreme Gradient Boosting (XGB). These two methods were extensively discussed in class, therefore we will not give an introduction here.
+Furthermore, we will fit different tree based models, in particular Random Forests and Extreme Gradient Boosting (XGB). These two methods were extensively discussed in class, therefore we will not give an introduction here.
 
 \newpage
 
 # Results
 
-This section will present the main results of our project. We will begin by presenting the base models, i.e the models estimated using the raw unchanged input data, then we will discuss an approach for feature engineering and compare the results obtained with the original data to slight modified data. Subsequently the results of the different models applied in the frame of our analysis will be compared against each other and in reference to the Kaggle competition to the winning model as well. Before closing this section with a stylized model that allows to target customers optimally we will briefly discuss which features have the highest descriptive/predictive power.  
+This section will present the main results of our project. We will begin by presenting the base models, i.e the models estimated using the raw unchanged input data, then we will discuss an approach for feature engineering and compare the results obtained with the original data to slightly modified data. Subsequently, the results of the different models applied in the frame of our analysis will be compared against each other and in reference to the winning model of the competition as well. Before closing this section with a stylized model that allows to target customers optimally we will briefly discuss which features have the highest descriptive/predictive power.  
 
 ## Base Model
 
@@ -150,7 +144,7 @@ Thus, even though the Glmnets do no longer offer superior performance across all
 
 ## Feature Engineering
 
-As mention above, the data solely contains categorical variables. This comes with some challenges for feature engineering as new feature can (to our knowledge) only be generated by creating interaction terms or reducing the levels of a feature. As the encoding of the feature is unknown, only the first approach remains relevant. Following the competitions winner [@CompWinner] we construct two addition feature (an interaction term for the number of policies and the contribution per policy for car and fire insurances) and dismiss the socio demographic variables contained. 
+As mention above, the data solely contains categorical variables. This comes with some challenges for feature engineering as new feature can only be generated by creating interaction terms or changing the levels of a feature. As the encoding of the feature is unknown, only the first approach remains relevant. Following the competitions winner [@CompWinner] we construct two addition feature (an interaction term for the number of policies and the contribution per policy for car and fire insurances) and dismiss the socio demographic variables contained. 
 
 
 ```{r, fig.cap = "Feature Engineering"}
@@ -177,7 +171,7 @@ for(i in ecpFE){
 ```
 Above in the first row we see that except for the XGB model the RoC curve for the models are better with unchanged data (red). As the data is heavily imbalanced the second row, containing the Precision-Recall curves, gives more important information about the quality of the models. Here we find that for low cut off points, clearly all models perform better with the original data. 
 
-We therefore conclude that, at least in the set up of our models, the approach proposed by [@CompWinner] does not lead to better results. As we could not come up with better ideas for feature engineering we therefore continue the analysis on the basis of the unchanged data. 
+We therefore conclude that, at least in the set up of our models, the approach proposed by [@CompWinner] does not lead to better results. 
 
 ## Correcting the Imbalance
 
@@ -337,7 +331,7 @@ Eval_Curve(forest_plot_prelim, col = col[1:4], leg_text = names(forest_plot_prel
 
 Similar to the Glmnets the re-sampling does not yield increases in predictive performance as displayed in the plots above. Only for higher cut-offs, in the case of XGB, the trade-off between precision and sensitivity seems to be superior for the re-sampled models. However, for reasons previously outlined we are not interested in this range of cut-offs. Consequently, we may conclude that the re-sampling did not result in increases in model performance and thus the best performing model is still the elastic net utilizing the complementary-log-log link. 
 
-## Best regressors
+## Best Regressors
 
 ```{r, results = "hide"}
 #Reading in glm_fits
@@ -367,7 +361,7 @@ cloglogvarImp <- varImp(glm_fits$cloglog, lambda = glm_fits$cloglog$lambda)  %>%
 
 •	PBRAND: Contribution fire policies 
 
-Overall, the important variables point towards customers that already own a number of other insurance policies and have a higher contribution to the policies. High levels of contribution to boat policies, car policies and disability insurance policies indicate a higher likelihood, that the customer would also be interested in a caravan insurance. Interestingly, a low level of boat insurance suggests an interest in caravan insurance as well, of course this may not be interpreted as a causal effect without further analysis. 
+Overall, the important variables point towards customers that already own a number of other insurance policies and have a higher contribution to the policies. High levels of contribution to boat policies, car policies and disability insurance policies indicate a higher likelihood, that the customer would also be interested in caravan insurance. Interestingly, a low level of boat insurance suggests an interest in caravan insurance as well, of course this may not be interpreted as a causal effect without further analysis. 
 
 ```{r fig.cap="Variable importance in our best model", fig.height = 2, fig.width = 6, fig.align = "center"}
 #Plot
@@ -387,13 +381,11 @@ plot_varimp
 
 ## Comparison to the Kaggle Competition
 
-In general, our results differ quite a bit from the winners of the Kaggle Competition as there was one winner for the description section and one winner for the prediction section. As the competition allowed to set a focus on a section, by selecting different winner, we decided to focus on the predictive task in our analysis. A general problem in the submitted solutions was that the participants often did not account for the unbalanced data.[@CompWinner] This is closely linked to the other big problem identified with all the identified solutions, namely high variance. Again, this problem was often not recognized as such and often a more advanced approach in fine tuning was named as a potential improvement, which would have worsened the problem even further. [@BiasVar]
+Charles Elkan, the winner of the prediction section used a Naïve Bayes learning approach and identified the best predictors with this strategy. The features with the largest explaining power in his model were a high purchase power class, private third-party insurance, boat policy, a social security insurance policy and a single fire policy with high contribution level. He would describe the most likely customer for a caravan insurance policy as a wealthier than average customer who already owns a car, which is insured with a high premium [@CompWinner].
 
-Charles Elkan, the winner of the prediction section used a Naïve Bayes learning approach and identified the best predictors with this strategy. The features with the largest explaining power in his model were a high purchase power class, private third-party insurance, boat policy, a social security insurance policy and a single fire policy with high contribution level. He would describe the most likely customer for a caravan insurance policy as a wealthier than average customer who already owns a car, which is insured with a high premium. [@CompWinner]
+YongSeog Kim and W. Nick Street, the winners for the description section, used a combination of artificial neural networks for predication with an evolutionary search. As they did not include all of the features provided, the predictive features were chosen by the evolutionary local search algorithm, which utilizes the quality and likelihood of neighboring individuals. They found the number of car insurance policies and the contribution to car insurance to be the most important predictor [@KimStreet].
 
-YongSeog Kim and W. Nick Street, the winners for the description section, used a combination of artificial neural networks for predication with an evolutionary search. As they did not include all of the features provided, the predictive features were chosen by the evolutionary local search algorithm, which utilizes the quality and likelihood of neighboring individuals to experience the same feature. They found the feature on the number of and the contribution to car insurance to be the most important predictor. Additionally, an interesting insight was that highly wealthy customers are less interest in caravan insurance even though above average wealth is increasing the likelihood. [@KimStreet]
-
-The biggest similarity regarding the variable to our results is the importance of having a boat insurance in the predictors. Our regressors with the largest explaining power point into a similar direction as owning an above average number of insurance policies and having a high contribution to those is indicating a customer whose wealth is above average. Besides that, the features with the highest explaining power selected by our elastic net model were different ones. 
+The biggest similarity regarding the variables to our results is the importance of having a boat insurance. Our regressors with the largest explaining power point into a similar direction as owning an above average number of insurance policies and having a high contribution to those. Besides that, the features with the highest explaining power selected by our elastic net model were quite different to those included in the winner's model. 
 
 
 ```{r, results = "hide"}
@@ -403,12 +395,9 @@ pred_label_cloglog %>% as.data.frame() %>% cbind(act_label) %>% slice_max(s0, n=
 act_label %>% as.data.frame() %>% count(act_label==1)
 ```
 
-The competition task was to hand in the 800 customers from the evaluation data set, who had the highest likelihood of being interested in obtaining a caravan insurance policy. There were 238 from the 4000 variables were caravan policy holders. The winning entry identified 121 correctly among his top 800 predictions. The next two best scores were 115 and 112. [@CompWinner] Our approach led to correctly identifying 117 caravan policy holders among the top 800 predictions, assigning us the second place in the prediction task of the competition. 
+The competition task was to hand in the 800 customers from the evaluation data set, who had the highest likelihood of being interested in obtaining a caravan insurance policy. 238 out of 4000 obersvations in the evaluation set were caravan policy holders. The winning entry identified 121 correctly among his top 800 predictions. The next two best scores were 115 and 112. [@CompWinner] Our approach led to correctly identifying 117 caravan policy holders among the top 800 predictions, assigning us the second place in the prediction task of the competition. 
 
-
-
-
-# Economic operationalization
+# Economic Operationalization
 
 "[...]it is usually economically irrational to offer an insurance policy
 to some arbitrary percentage of customers. Instead, an offer
@@ -455,15 +444,14 @@ knitr::kable(CM$table, caption = 'Confusion Matrix given the optimal cop (actual
 ```
 
 
-As we see above, offering in the described way leads to a high number of false positives as the costs of contacting a client that does not accept the offer are quite low compared to the opportunity costs of not offering a client that would have accepted an offer. 
+As we see above, offering in the described way leads to a high number of false positives as the costs of contacting a client that does not accept the offer are quite low compared to the opportunity costs of not offering insurance to a client that would have purchased it. 
 
 # Conclusion
 
 Predicting demand for Caravan insurances in the frame of the CoiL Challenge led to a variety of interesting results.
+Given the insight that (by the economic structure of the problem) we are interested in predictions based on low cut off points we find that comparably simple methods like Glmnets outperform more complex models such as random forest or XGB models. Under the models of consideration a Glm elastic net with a complementary log-log link function led to the best results. Furthermore, the driving explanatory factors are, beside income, other policies. That is information about consumer decisions for similar products is more important than socio-demographic features. An insight that would be worth investigating in a more general setting. Finally, we outlined that accounting for the imbalance in the data via re-sampling did not lead to an improvement in predictive power for the models we considered.
 
-Given the insight that (by the economic structure of the problem) we are interested in predictions based on low cut off points we find that comparably simple methods like Glmnets outperform more complex models such as random forest or XGB models. Under the models of consideration a Glm elastic net with a complementary log-log link function led to the best results. Furthermore, the driving explanatory factors are, beside income, other policies. That is information about consumer decisions for similar products is more important than socio-demographic features. An insight that would be worth investigating in a more general setting. Finally, we outlined that accounting for the imbalancedness of the data did not lead to an improvement of the considered models.
-
-Based on these results (Glmnet with unengineered data led to the best predictions) we conclude that a relatively simple solution is the best a approach to the outlined problem. However, it has to be mentioned that we had a 20 year technological advantage on the competion's participants. For instance, elastic net penalization was only introduced by @ElasticNet a few years after the competition. Similarly, random forests were only introduced in 2001. So in some sense, we simply had a larger toolbox at our disposal.
+Based on these results we conclude that a relatively simple solution is the best approach to the outlined problem. However, it has to be mentioned that we had a 20 year technological advantage on the competion's participants. For instance, elastic net penalization was only introduced by @ElasticNet a few years after the competition. Similarly, random forests were only introduced in 2001. So in some sense, we simply had a larger toolbox at our disposal.
 
 
 
