@@ -341,7 +341,7 @@ glm_fits <- readRDS("./../Parameters/Glmnet_orig_modelfit.RDS")
 cloglogvarImp <- varImp(glm_fits$cloglog, lambda = glm_fits$cloglog$lambda)  %>% dplyr::filter(Overall != 0) %>% arrange(desc(Overall)) %>% slice_max(Overall, n = 10)
 ```
 
-71 features are included in the optimal Elastic Net model with the cloglog link function. As the features have been discretionized in the data set, the variable importance is can be observed for each level of the feature, for example the PMOTSCO3 represents the 3rd level of the PMOTSCO feature. The 10 features with the highest explaining power are 
+71 features are included in the optimal Elastic Net model with the cloglog link function. As the features have been discretionized in the data set, the variable importance can be observed for each level of the feature, for example the PMOTSCO3 represents the 3rd level of the PMOTSCO feature. The 10 features with the highest explanatory power are:
 
 •	PMOTSCO: Contribution motorcycle/scooter policies 
 
@@ -361,7 +361,7 @@ cloglogvarImp <- varImp(glm_fits$cloglog, lambda = glm_fits$cloglog$lambda)  %>%
 
 •	PBRAND: Contribution fire policies 
 
-Overall, the important variables point towards customers that already own a number of other insurance policies and have a higher contribution to the policies. High levels of contribution to boat policies, car policies and disability insurance policies indicate a higher likelihood, that the customer would also be interested in caravan insurance. Interestingly, a low level of boat insurance suggests an interest in caravan insurance as well, of course this may not be interpreted as a causal effect without further analysis. 
+Overall, the important variables point towards customers that already own a number of other insurance policies and have a higher contribution said policies. High levels of contribution to boat policies, car policies and disability insurance policies indicate a higher likelihood, that the customer would also be interested in caravan insurance. Interestingly, a low level of boat insurance suggests an interest in caravan insurance as well, of course this may not be interpreted as a causal effect without further analysis. 
 
 ```{r fig.cap="Variable importance in our best model", fig.height = 2, fig.width = 6, fig.align = "center"}
 #Plot
