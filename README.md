@@ -8,10 +8,10 @@ competition](https://www.kaggle.com/uciml/caravan-insurance-challenge).
 
 # Group Members
 
-1.  Fabian Blasch, 01507223
-2.  Gregor Steiner, 01615340
-3.  Sophie Steininger, 01614383
-4.  Jakob Zellmann, 11708938
+1.  Fabian Blasch
+2.  Gregor Steiner
+3.  Sophie Steininger
+4.  Jakob Zellmann
 
 # Links
 
